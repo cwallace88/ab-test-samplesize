@@ -1,10 +1,15 @@
+from email import header
+from http import client
+from pydoc import cli
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+import os, base64
+from matplotlib import pyplot as plt
 import matplotlib.ticker as mtick
+import scipy
 from scipy.stats import norm
 import streamlit as st
-
+import csv
 st.set_page_config(
     page_title="AB test sample size calculator",
     page_icon="https://rfoxdata.co.uk/assets/favicon/favicon-32x32.png",
@@ -25,11 +30,16 @@ plt.rc("font", **font)
 Input the expected daily observations and conversions to return a plot
 containing potential runtimes and their associated minimum detectable effect.
 """
+client_name = st.text_input("What is the name of the client")
+project_name = st.text_input("What is the name of your project", max_chars = 45)
+test_page = st.text_input("What pages or pages are you testing on?")
 
-daily_obs = st.number_input("Daily observations", value=20000, step=100)
-daily_cons = st.number_input("Daily conversions", value=1000, step=100)
+daily_obs = st.number_input("Avg daily observations (28- day average)", value=20000, step=100)
+daily_cons = st.number_input("Avg daily conversions (28- day average)", value=1000, step=100)
+conversion_metric = st.text_input("Conversion metric")
 
-f"Base conversion rate {daily_cons / daily_obs:.2%}"
+
+base_conv = f"Base conversion rate {daily_cons / daily_obs:.2%}"
 n_variants = st.number_input("Number of variants (incl. the control)", value=2)
 
 if st.checkbox("Add business value"):
@@ -124,9 +134,9 @@ def create_mde_table(
     df.columns = ["MDE", "New Conv. Rate", "Sample Size"]
     # We convert to np.int64 to round the number and also to avoid
     # hitting the int32 limit
-    df["Sample Size"] = df["Sample Size"].astype(np.int64)
+    df["Sample Size"] = round(df["Sample Size"].astype(np.int64), 0)
     df["Days"] = df["Sample Size"] / daily_observations
-    df["Weeks"] = df["Days"] / 7
+    df["Weeks"] = abs(df["Days"] / 7)
     df["Extra conversions (monthly)"] = round(
         p0 * df.MDE * daily_observations * 365 / 12
     )
@@ -134,7 +144,7 @@ def create_mde_table(
         df["Extra revenue (monthly)"] = round(df["Extra conversions (monthly)"] * aov)
     except NameError:
         pass
-
+    
     return df
 
 
@@ -282,6 +292,7 @@ might see from your test.
 
 mde_plot(df)
 
+
 if st.checkbox("Show table"):
     new = pd.DataFrame()
     for i in range(1, max_runtime + 1):
@@ -291,6 +302,38 @@ if st.checkbox("Show table"):
             week_text = "week"
         new[f"{i} {week_text}"] = df[df["Weeks"] <= i].iloc[0]
     st.write(new)
+    new_data = new.to_csv('/Users/cwallace/Applications/App/ab-test-samplesize/table data.csv')
+   
+
+st.title('Export Data')
+
+head_list =['client name', 'project name', 'test pages', 'number of variants','base conversion','daily obs', 'daily cons', 'significance level', 'statistical power', 'lenght of test', 'conversion metric']
+lista = [client_name, project_name,test_page,n_variants,base_conv,daily_obs, daily_cons, alpha, beta, max_runtime, conversion_metric]
+df = pd.DataFrame(data = [lista], columns=[head_list])
+combo = df.to_csv('/Users/cwallace/Applications/App/ab-test-samplesize/form data.csv')
+
+
+def get_binary_file_downloader_html(combo, file_label='File'):
+    with open(combo, 'rb') as f:
+        first_data = f.read()
+    bin_str = base64.b64encode(first_data).decode()
+    href = f'<a href="data:application/octet-stream;base64,{bin_str}" download="{os.path.basename(combo)}">Download {file_label}</a>'
+    return href
+
+
+
+def get_binary_file_downloader_html(new_data, file_label='File'):
+    with open(new_data, 'rb') as f:
+        data = f.read()
+    bin_str = base64.b64encode(data).decode()
+    href = f'<a href="data:application/octet-stream;base64,{bin_str}" download="{os.path.basename(new_data)}">Download {file_label}</a>'
+    return href
+
+
+st.markdown(get_binary_file_downloader_html('form data.csv', 'Data Form'), unsafe_allow_html=True)
+
+st.markdown(get_binary_file_downloader_html('table data.csv', 'Data Table'), unsafe_allow_html=True)
+
 
 # """
 # ## Formula used
@@ -304,5 +347,4 @@ if st.checkbox("Show table"):
 ### See also
 
 * [AB test significance calculator](https://abtestcalculator.herokuapp.com/)
-* [Github Repository](https://github.com/rjjfox/ab-test-samplesize)
 """
