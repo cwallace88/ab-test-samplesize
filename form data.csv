@@ -1,2 +1,2 @@
-,client name,project name,test pages,number of variants,base conversion,daily obs,daily cons,significance level,statistical power,lenght of test,conversion metric
-0,,,,2,Base conversion rate 5.00%,20000,1000,0.050000000000000044,0.19999999999999996,4,
+,client name,project name,test pages,number of variants,base conversion,daily obs,daily cons,significance level,statistical power,lenght of test,conversion metric,extraction start dt,extraction en dt
+0,TWOTIME,Freedom,jsfhsdfss,2,0.14444444444444443,4500,650,0.050000000000000044,0.19999999999999996,4,button clicks,2022-01-20,2022-02-16

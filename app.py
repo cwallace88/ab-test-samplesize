@@ -10,6 +10,9 @@ import scipy
 from scipy.stats import norm
 import streamlit as st
 import csv
+import datetime
+from random import random, randint
+
 st.set_page_config(
     page_title="AB test sample size calculator",
     page_icon="https://rfoxdata.co.uk/assets/favicon/favicon-32x32.png",
@@ -30,16 +33,22 @@ plt.rc("font", **font)
 Input the expected daily observations and conversions to return a plot
 containing potential runtimes and their associated minimum detectable effect.
 """
-client_name = st.text_input("What is the name of the client")
+
+client_name = st.text_input("What is the name of the client").upper()
 project_name = st.text_input("What is the name of your project", max_chars = 45)
 test_page = st.text_input("What pages or pages are you testing on?")
+
+
+start_extraction_date = st.date_input("What is the 28-day START extraction period", datetime.date(2022,1,1))
+end_extraction_date = st.date_input("What is the 28-day END extraction period", start_extraction_date + datetime.timedelta(days=27))
 
 daily_obs = st.number_input("Avg daily observations (28- day average)", value=20000, step=100)
 daily_cons = st.number_input("Avg daily conversions (28- day average)", value=1000, step=100)
 conversion_metric = st.text_input("Conversion metric")
 
 
-base_conv = f"Base conversion rate {daily_cons / daily_obs:.2%}"
+
+base_conv = daily_cons / daily_obs
 n_variants = st.number_input("Number of variants (incl. the control)", value=2)
 
 if st.checkbox("Add business value"):
@@ -302,49 +311,25 @@ if st.checkbox("Show table"):
             week_text = "week"
         new[f"{i} {week_text}"] = df[df["Weeks"] <= i].iloc[0]
     st.write(new)
-    new_data = new.to_csv('/Users/cwallace/Applications/App/ab-test-samplesize/table data.csv')
-   
 
-st.title('Export Data')
+new['client name'] = client_name
+new['project name'] = project_name
+new['extraction start dt'] = start_extraction_date
+new['extraction end dt'] = end_extraction_date
 
-head_list =['client name', 'project name', 'test pages', 'number of variants','base conversion','daily obs', 'daily cons', 'significance level', 'statistical power', 'lenght of test', 'conversion metric']
-lista = [client_name, project_name,test_page,n_variants,base_conv,daily_obs, daily_cons, alpha, beta, max_runtime, conversion_metric]
+#new_data = new.to_csv('/Users/cwallace/Applications/App/ab-test-samplesize/table data.csv')
+
+
+head_list =['client name', 'project name', 'test pages', 'number of variants','base conversion','daily obs', 'daily cons', 'significance level', 'statistical power', 'lenght of test', 'conversion metric', 'extraction start dt', 'extraction en dt']
+lista = [client_name, project_name,test_page,n_variants,base_conv,daily_obs, daily_cons, alpha, beta, max_runtime, conversion_metric, start_extraction_date, end_extraction_date]
 df = pd.DataFrame(data = [lista], columns=[head_list])
-combo = df.to_csv('/Users/cwallace/Applications/App/ab-test-samplesize/form data.csv')
-
-
-def get_binary_file_downloader_html(combo, file_label='File'):
-    with open(combo, 'rb') as f:
-        first_data = f.read()
-    bin_str = base64.b64encode(first_data).decode()
-    href = f'<a href="data:application/octet-stream;base64,{bin_str}" download="{os.path.basename(combo)}">Download {file_label}</a>'
-    return href
+#combo = df.to_csv('/Users/cwallace/Applications/App/ab-test-samplesize/form data.csv')
 
 
 
-def get_binary_file_downloader_html(new_data, file_label='File'):
-    with open(new_data, 'rb') as f:
-        data = f.read()
-    bin_str = base64.b64encode(data).decode()
-    href = f'<a href="data:application/octet-stream;base64,{bin_str}" download="{os.path.basename(new_data)}">Download {file_label}</a>'
-    return href
 
 
-st.markdown(get_binary_file_downloader_html('form data.csv', 'Data Form'), unsafe_allow_html=True)
+if st.button('Love the Results'):
+    new.to_csv('/Users/cwallace/Applications/App/ab-test-samplesize/table data.csv')
+    df.to_csv('/Users/cwallace/Applications/App/ab-test-samplesize/form data.csv')
 
-st.markdown(get_binary_file_downloader_html('table data.csv', 'Data Table'), unsafe_allow_html=True)
-
-
-# """
-# ## Formula used
-# """
-# st.latex(r"""
-# \left(\Phi\left(1 - \frac{\alpha}{2}\right)+\Phi(1-\beta)\right)^2
-# \cdot \frac{p_0(1-p_0) + p_1(1-p_1)}{\left(p_0-p_1\right)^2}
-# """)
-
-"""
-### See also
-
-* [AB test significance calculator](https://abtestcalculator.herokuapp.com/)
-"""
